@@ -13,6 +13,7 @@ import {
   verifyPasswordServer,
   verifyLegacyPassword,
   createAdminSession,
+  isProxyAuthenticated,
 } from '../middleware/auth.js';
 import { encryptToken, decryptToken } from '../services/encryption.js';
 import { loadCorsOrigins } from '../index.js';
@@ -130,6 +131,16 @@ router.post('/check-password-status', (req, res) => {
     console.error('[Admin] Error checking password status:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Trusted reverse proxy login: issues an admin session when the request carries
+// the configured proxy auth header (see ADMIN_PROXY_AUTH_HEADER / _SECRET).
+router.post('/proxy-login', authRateLimiter, (req, res) => {
+  if (!isProxyAuthenticated(req)) {
+    return res.json({ valid: false });
+  }
+  const token = createAdminSession();
+  res.json({ valid: true, token });
 });
 
 // Set admin password (accepts plaintext, hashes server-side with scrypt)

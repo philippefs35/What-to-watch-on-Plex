@@ -139,6 +139,15 @@ const AdminPage = () => {
 
   const checkPasswordStatus = async () => {
     try {
+      // Behind a trusted authenticating proxy, skip the password prompt.
+      const { data: proxy } = await adminApi.proxyLogin();
+      if (proxy?.valid && proxy.token) {
+        setAdminToken(proxy.token);
+        setIsPasswordSet(true);
+        setIsAuthenticated(true);
+        return;
+      }
+
       const { data, error } = await adminApi.checkPasswordStatus();
       if (error) throw new Error(error);
       setIsPasswordSet(data?.isSet ?? false);
