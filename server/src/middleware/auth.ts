@@ -45,16 +45,21 @@ setInterval(() => {
 // admin password prompt is skipped. Off unless both variables are set.
 
 const PROXY_AUTH_HEADER = (process.env.ADMIN_PROXY_AUTH_HEADER || '').trim().toLowerCase();
-const PROXY_AUTH_SECRET = process.env.ADMIN_PROXY_AUTH_SECRET || '';
+const PROXY_AUTH_SECRET = (process.env.ADMIN_PROXY_AUTH_SECRET || '').trim();
 const PROXY_AUTH_MIN_SECRET_LENGTH = 16;
 
+const PROXY_AUTH_SECRET_DIGEST = crypto.createHash('sha256').update(PROXY_AUTH_SECRET).digest();
+
 export function isProxyAuthEnabled(): boolean {
-  return PROXY_AUTH_HEADER.length > 0 && PROXY_AUTH_SECRET.length >= PROXY_AUTH_MIN_SECRET_LENGTH;
+  return (
+    /^[a-z0-9-]+$/.test(PROXY_AUTH_HEADER) &&
+    PROXY_AUTH_SECRET.length >= PROXY_AUTH_MIN_SECRET_LENGTH
+  );
 }
 
-if (PROXY_AUTH_HEADER && !isProxyAuthEnabled()) {
+if ((PROXY_AUTH_HEADER || PROXY_AUTH_SECRET) && !isProxyAuthEnabled()) {
   console.warn(
-    `[Auth] ADMIN_PROXY_AUTH_HEADER is set but ADMIN_PROXY_AUTH_SECRET is missing or shorter than ${PROXY_AUTH_MIN_SECRET_LENGTH} characters; proxy auth is disabled.`
+    `[Auth] Proxy auth is disabled: set ADMIN_PROXY_AUTH_HEADER to a valid header name and ADMIN_PROXY_AUTH_SECRET to at least ${PROXY_AUTH_MIN_SECRET_LENGTH} characters.`
   );
 } else if (isProxyAuthEnabled()) {
   console.log(`[Auth] Trusted proxy auth enabled via header "${PROXY_AUTH_HEADER}"`);
@@ -66,8 +71,7 @@ export function isProxyAuthenticated(req: Request): boolean {
   if (typeof value !== 'string' || value.length === 0) return false;
   // Compare digests so the comparison is constant-time regardless of length.
   const given = crypto.createHash('sha256').update(value).digest();
-  const expected = crypto.createHash('sha256').update(PROXY_AUTH_SECRET).digest();
-  return crypto.timingSafeEqual(given, expected);
+  return crypto.timingSafeEqual(given, PROXY_AUTH_SECRET_DIGEST);
 }
 
 // ============ PASSWORD HASHING (scrypt) ============

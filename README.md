@@ -105,7 +105,7 @@ Then configure your proxy to require login for `/admin` and `/api/admin/proxy-lo
 Pomerium example (route order matters; keep the public route last):
 ```yaml
   - from: https://wtw.yourdomain.com
-    regex: "^/(admin|api/admin/proxy-login)$"
+    regex: "(?i)^/(admin|api/admin/proxy-login)/?$"
     to: http://wtwp:3000
     set_request_headers:
       X-WTW-Admin-Auth: your-long-random-secret
@@ -114,7 +114,15 @@ Pomerium example (route order matters; keep the public route last):
           or:
             - email:
                 is: you@example.com
+  # Public route for everything else; drop any client-supplied header as defense in depth
+  - from: https://wtw.yourdomain.com
+    to: http://wtwp:3000
+    allow_public_unauthenticated_access: true
+    allow_websockets: true
+    remove_request_headers:
+      - X-WTW-Admin-Auth
 ```
+With proxy auth on, setting the admin password also requires the proxy header, so nobody else can claim it. An existing password still works as a fallback login.
 
 ### Optional Settings
 

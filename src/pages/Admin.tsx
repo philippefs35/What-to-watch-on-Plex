@@ -143,7 +143,6 @@ const AdminPage = () => {
       const { data: proxy } = await adminApi.proxyLogin();
       if (proxy?.valid && proxy.token) {
         setAdminToken(proxy.token);
-        setIsPasswordSet(true);
         setIsAuthenticated(true);
         return;
       }
